@@ -64,3 +64,101 @@ Make contribution to Technitium by becoming a Patron and help making new softwar
 - [Technitium Blog: Technitium DNS Server v1.3 Released!](https://blog.technitium.com/2018/06/technitium-dns-server-v13-released.html) (Jun 2018)
 - [Technitium Blog: Running Technitium DNS Server on Ubuntu Linux](https://blog.technitium.com/2017/11/running-dns-server-on-ubuntu-linux.html) (Nov 2017)
 - [Technitium Blog: Technitium DNS Server Released!](https://blog.technitium.com/2017/11/technitium-dns-server-released.html) (Nov 2017)
+
+
+Running Technitium DNS Server on Ubuntu Linux
+Technitium DNS Server is build to be cross platform using the .NET Standard 2.0. You can run the DNS Server Portable App on Linux or macOS by using .NET Core. This post is written for Ubuntu Linux but, you can easily follow similar steps on your favorite distro.
+
+This blog post is updated regularly to provide latest instructions to install the DNS Server. So, refer it when you are about to do a fresh installation.
+
+Using Automated Installer / Updater
+Automated installer script can be used to install or update the DNS Server. Automated installer script is available for following distros:
+
+Ubuntu Server (x86 & x64)
+curl -sSL https://download.technitium.com/dns/install-ubuntu.sh | sudo bash
+Raspbian (Stretch) for Raspberry Pi (ARM32)
+curl -sSL https://download.technitium.com/dns/install-raspi.sh | sudo bash
+Installing DNS Server Manually
+Install the latest .NET Core runtime from here. Start Terminal and follow the steps below to install DNS Server on Ubuntu:
+
+Download DNS Server portable app using wget and extract it.
+wget https://download.technitium.com/dns/DnsServerPortable.tar.gz
+sudo mkdir -p /etc/dns/
+sudo tar -zxf DnsServerPortable.tar.gz -C /etc/dns/
+You can now run the DNS Server directly from console as a standalone app.
+cd /etc/dns/
+sudo ./start.sh
+Or, if your distro uses systemd, follow these steps to install it as a daemon.
+sudo cp /etc/dns/systemd.service /etc/systemd/system/dns.service
+sudo systemctl enable dns.service
+sudo systemctl start dns.service
+You may want to check the systemd log entries to find issue if the daemon fails to start:
+
+journalctl --unit dns --follow
+Or, if your distro does not support systemd, follow these steps to run it as a daemon using supervisor.
+sudo apt-get -y install supervisor
+sudo cp /etc/dns/supervisor.conf /etc/supervisor/conf.d/dns.conf
+sudo service supervisor restart
+You may want to check the log file to find issue if the daemon fails to start:
+
+cat /var/log/dns.err.log
+Open the url http://localhost:5380/ to access the web console.
+Updating DNS Server Manually
+Make sure you got the latest .NET Core runtime from here. Start Terminal and follow the steps below to update DNS Server on Ubuntu:
+
+Download DNS Server portable app using wget and extract it.
+wget https://download.technitium.com/dns/DnsServerPortable.tar.gz
+sudo tar -zxf DnsServerPortable.tar.gz -C /etc/dns/
+If your distro uses systemd, follow these steps to restart the DNS Server daemon.
+sudo systemctl restart dns.service
+You may want to check the systemd log entries to find issue if the daemon fails to start:
+
+journalctl --unit dns --follow
+Or, if your distro does not support systemd, follow these steps to restart the DNS Server using supervisor.
+sudo service supervisor restart
+You may want to check the log file to find issue if the daemon fails to start:
+
+cat /var/log/dns.err.log
+Open the url http://localhost:5380/ to access the web console.
+Common Issue With Ubuntu
+If you are using Ubuntu Desktop, you may find dnsmasq or systemd-resolved daemon already running on UDP port 53 preventing the DNS Server to listen on the same port. You can check the DNS Server log file from the web console to confirm the issue by finding this error:
+
+[2019-01-01 07:30:59 UTC] [0.0.0.0:53] System.Net.Sockets.SocketException (98): Address already in use
+   at System.Net.Sockets.Socket.UpdateStatusAfterSocketErrorAndThrowException(SocketError error, String callerName)
+   at System.Net.Sockets.Socket.DoBind(EndPoint endPointSnapshot, SocketAddress socketAddress)
+   at System.Net.Sockets.Socket.Bind(EndPoint localEP)
+   at DnsServerCore.DnsServer.Start() in Z:\Technitium\Projects\DnsServer\DnsServerCore\DnsServer.cs:line 811
+You may confirm if its dnsmasq or systemd-resolved by running sudo netstat -nlpu command.
+
+Follow these steps below to disable the dnsmasq service:
+
+Edit the NetworkManager.conf file to disable dnsmasq service:
+sudo nano /etc/NetworkManager/NetworkManager.conf
+Comment out the dns=dnsmasq line by adding # character at the beginning like this #dns=dnsmasq and exit the editor by pressing CTRL+X and enter y to save the file.
+Restart the computer to apply changes as shown below:
+sudo reboot now
+After system reboot, open Terminal and check DNS Server logs again from the web console.
+Follow these steps below to disable the systemd-resolved service:
+
+Disable the systemd-resolved service and stop it:
+sudo systemctl disable systemd-resolved
+sudo systemctl stop systemd-resolved
+Edit your /etc/resolv.conf using nano:
+sudo nano /etc/resolv.conf
+Edit the existing nameserver entry to the one shown below in your /etc/resolv.conf
+nameserver 127.0.0.1
+Edit your /etc/NetworkManager/NetworkManager.conf using nano:
+sudo nano /etc/NetworkManager/NetworkManager.conf
+Put the following line in the [main] section of your /etc/NetworkManager/NetworkManager.conf as shown below:
+[main]
+dns=default
+Restart network-manager:
+sudo service network-manager restart
+Now restart the DNS Server and check logs again from the web console.
+sudo systemctl restart dns.service
+That's it!
+The DNS Server is running and you can configure your network with the IP address of this computer for DNS resolution.
+
+Check out the web console to create zone, check cached zones, access DNS client tool and configure server settings.
+
+The DNS Server creates a folder named config in the current folder which contains the server config and zone files. Make sure you copy this folder while moving the DNS server folder if you want all the zone files and config to persist.
